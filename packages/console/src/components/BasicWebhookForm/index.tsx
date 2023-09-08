@@ -68,7 +68,7 @@ function BasicWebhookForm() {
               if (!uriValidator(value)) {
                 return t('errors.invalid_uri_format');
               }
-              return value.startsWith('https://') || t('webhooks.create_form.https_format_error');
+              return value.startsWith('http') || t('webhooks.create_form.https_format_error');
             },
           })}
           placeholder={t('webhooks.create_form.endpoint_url_placeholder')}
