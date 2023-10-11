@@ -4,7 +4,10 @@ import { createMockUtils } from '@logto/shared/esm';
 
 import { mockSignInExperience } from '#src/__mocks__/sign-in-experience.js';
 import { mockUser } from '#src/__mocks__/user.js';
-import { mockWebAuthnCreationOptions } from '#src/__mocks__/webauthn.js';
+import {
+  mockWebAuthnAuthenticationOptions,
+  mockWebAuthnRegistrationOptions,
+} from '#src/__mocks__/webauthn.js';
 import RequestError from '#src/errors/RequestError/index.js';
 import type koaAuditLog from '#src/middleware/koa-audit-log.js';
 import { createMockLogContext } from '#src/test-utils/koa-audit-log.js';
@@ -54,12 +57,15 @@ const { sendVerificationCodeToIdentifier } = await mockEsmWithActual(
   })
 );
 
-const { generateWebAuthnRegistrationOptions } = await mockEsmWithActual(
-  './utils/webauthn.js',
-  () => ({
-    generateWebAuthnRegistrationOptions: jest.fn().mockResolvedValue(mockWebAuthnCreationOptions),
-  })
-);
+const { generateWebAuthnRegistrationOptions, generateWebAuthnAuthenticationOptions } =
+  await mockEsmWithActual('./utils/webauthn.js', () => ({
+    generateWebAuthnRegistrationOptions: jest
+      .fn()
+      .mockResolvedValue(mockWebAuthnRegistrationOptions),
+    generateWebAuthnAuthenticationOptions: jest
+      .fn()
+      .mockResolvedValue(mockWebAuthnAuthenticationOptions),
+  }));
 
 const { verifyIdentifier, verifyProfile } = await mockEsmWithActual(
   './verifications/index.js',
@@ -90,6 +96,7 @@ const baseProviderMock = {
   client_id: demoAppApplicationId,
 };
 
+const findUserById = jest.fn().mockResolvedValue(mockUser);
 const tenantContext = new MockTenant(
   createMockProvider(jest.fn().mockResolvedValue(baseProviderMock)),
   {
@@ -97,7 +104,7 @@ const tenantContext = new MockTenant(
       findDefaultSignInExperience: jest.fn().mockResolvedValue(mockSignInExperience),
     },
     users: {
-      findUserById: jest.fn().mockResolvedValue(mockUser),
+      findUserById,
     },
   },
   {
@@ -225,10 +232,6 @@ describe('interaction routes', () => {
   describe('POST /verification/webauthn-registration', () => {
     const path = `${interactionPrefix}/${verificationPath}/webauthn-registration`;
 
-    afterEach(() => {
-      getInteractionStorage.mockClear();
-    });
-
     it('should return WebAuthn options for new user', async () => {
       getInteractionStorage.mockReturnValue({
         event: InteractionEvent.Register,
@@ -245,7 +248,7 @@ describe('interaction routes', () => {
         {
           pendingMfa: {
             type: MfaFactor.WebAuthn,
-            challenge: mockWebAuthnCreationOptions.challenge,
+            challenge: mockWebAuthnRegistrationOptions.challenge,
           },
           pendingAccountId: 'generated-id',
         },
@@ -254,7 +257,7 @@ describe('interaction routes', () => {
         expect.anything()
       );
       expect(response.statusCode).toEqual(200);
-      expect(response.body).toMatchObject(mockWebAuthnCreationOptions);
+      expect(response.body).toMatchObject(mockWebAuthnRegistrationOptions);
     });
 
     it('should return WebAuthn options for existing user', async () => {
@@ -267,6 +270,7 @@ describe('interaction routes', () => {
       verifyProfile.mockResolvedValueOnce({
         event: InteractionEvent.SignIn,
       });
+      findUserById.mockResolvedValueOnce(mockUser);
       const response = await sessionRequest.post(path).send();
       expect(response.statusCode).toEqual(200);
       expect(generateWebAuthnRegistrationOptions).toBeCalled();
@@ -274,14 +278,53 @@ describe('interaction routes', () => {
         {
           pendingMfa: {
             type: MfaFactor.WebAuthn,
-            challenge: mockWebAuthnCreationOptions.challenge,
+            challenge: mockWebAuthnRegistrationOptions.challenge,
           },
         },
         expect.anything(),
         expect.anything(),
         expect.anything()
       );
-      expect(response.body).toMatchObject(mockWebAuthnCreationOptions);
+      expect(response.body).toMatchObject(mockWebAuthnRegistrationOptions);
+    });
+  });
+
+  describe('POST /verification/webauthn-authentication', () => {
+    const path = `${interactionPrefix}/${verificationPath}/webauthn-authentication`;
+
+    afterEach(() => {
+      getInteractionStorage.mockClear();
+    });
+
+    it('should throw for non authenticated interaction', async () => {
+      getInteractionStorage.mockReturnValue({
+        event: InteractionEvent.SignIn,
+      });
+      const response = await sessionRequest.post(path).send();
+      expect(response.statusCode).toEqual(400);
+    });
+
+    it('should return WebAuthn options for existing user', async () => {
+      getInteractionStorage.mockReturnValue({
+        event: InteractionEvent.SignIn,
+        accountId: 'accountId',
+      });
+      findUserById.mockResolvedValueOnce(mockUser);
+      const response = await sessionRequest.post(path).send();
+      expect(response.statusCode).toEqual(200);
+      expect(generateWebAuthnAuthenticationOptions).toBeCalled();
+      expect(storeInteractionResult).toBeCalledWith(
+        {
+          pendingMfa: {
+            type: MfaFactor.WebAuthn,
+            challenge: mockWebAuthnAuthenticationOptions.challenge,
+          },
+        },
+        expect.anything(),
+        expect.anything(),
+        expect.anything()
+      );
+      expect(response.body).toMatchObject(mockWebAuthnAuthenticationOptions);
     });
   });
 });
