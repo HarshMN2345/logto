@@ -3546,6 +3546,9 @@ importers:
       '@silverhand/ts-config-react':
         specifier: 4.0.0
         version: 4.0.0(typescript@5.0.2)
+      '@simplewebauthn/browser':
+        specifier: ^8.3.1
+        version: 8.3.1
       '@swc/core':
         specifier: ^1.3.52
         version: 1.3.52
@@ -9047,6 +9050,12 @@ packages:
       typescript: 5.0.2
     dev: true
 
+  /@simplewebauthn/browser@8.3.1:
+    resolution: {integrity: sha512-bMW7oOkxX4ydRAkkPtJ1do2k9yOoIGc/hZYebcuEOVdJoC6wwVpu97mYY7Mz8B9hLlcaR5WFgBsLl5tSJVzm8A==}
+    dependencies:
+      '@simplewebauthn/typescript-types': 8.0.0
+    dev: true
+
   /@simplewebauthn/server@8.2.0:
     resolution: {integrity: sha512-nknf7kCa5V61Kk2zn1vTuKeAlyut9aWduIcbHNQWpMCEJqH/m8cXpb+9UV42MEQRIk8JVC1GSNeEx56QVTfJHw==}
     engines: {node: '>=16.0.0'}
@@ -9066,7 +9075,6 @@ packages:
 
   /@simplewebauthn/typescript-types@8.0.0:
     resolution: {integrity: sha512-d7Izb2H+LZJteXMkS8DmpAarD6mZdpIOu/av/yH4/u/3Pd6DKFLyBM3j8BMmUvUqpzvJvHARNrRfQYto58mtTQ==}
-    dev: false
 
   /@sinclair/typebox@0.24.46:
     resolution: {integrity: sha512-ng4ut1z2MCBhK/NwDVwIQp3pAUOCs/KNaW3cBxdFB2xTDrOuo1xuNmpr/9HHFhxqIvHrs1NTH3KJg6q+JSy1Kw==}

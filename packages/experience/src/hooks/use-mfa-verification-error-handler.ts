@@ -1,5 +1,5 @@
 import { MfaFactor } from '@logto/schemas';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { validate } from 'superstruct';
 
@@ -23,6 +23,33 @@ const useMfaVerificationErrorHandler = ({ replace }: Options = {}) => {
   const { setToast } = useToast();
   const startTotpBinding = useStartTotpBinding({ replace });
 
+  const handleMfaRedirect = useCallback(
+    (flow: UserMfaFlow, availableFactors: MfaFactor[]) => {
+      const mfaFactorsState: MfaFactorsState = {
+        availableFactors,
+      };
+
+      if (availableFactors.length > 1) {
+        navigate({ pathname: `/${flow}` }, { replace, state: mfaFactorsState });
+        return;
+      }
+
+      const factor = availableFactors[0];
+
+      if (!factor) {
+        return;
+      }
+
+      if (factor === MfaFactor.TOTP && flow === UserMfaFlow.MfaBinding) {
+        void startTotpBinding(availableFactors);
+        return;
+      }
+
+      navigate({ pathname: `/${flow}/${factor}` }, { replace, state: mfaFactorsState });
+    },
+    [navigate, replace, startTotpBinding]
+  );
+
   const mfaVerificationErrorHandler = useMemo<ErrorHandlers>(
     () => ({
       'user.missing_mfa': (error) => {
@@ -34,47 +61,21 @@ const useMfaVerificationErrorHandler = ({ replace }: Options = {}) => {
           return;
         }
 
-        if (missingFactors.length > 1) {
-          const state: MfaFactorsState = { availableFactors: missingFactors };
-          navigate({ pathname: `/${UserMfaFlow.MfaBinding}` }, { replace, state });
-          return;
-        }
-
-        const factor = missingFactors[0];
-
-        if (factor === MfaFactor.TOTP) {
-          void startTotpBinding(missingFactors);
-        }
-        // Todo: @xiaoyijun handle other factors
+        handleMfaRedirect(UserMfaFlow.MfaBinding, missingFactors);
       },
       'session.mfa.require_mfa_verification': async (error) => {
         const [_, data] = validate(error.data, requireMfaFactorsErrorDataGuard);
         const availableFactors = data?.availableFactors ?? [];
+
         if (availableFactors.length === 0) {
           setToast(error.message);
           return;
         }
 
-        if (availableFactors.length > 1) {
-          const state: MfaFactorsState = { availableFactors };
-          navigate({ pathname: `/${UserMfaFlow.MfaVerification}` }, { replace, state });
-          return;
-        }
-
-        const factor = availableFactors[0];
-        if (!factor) {
-          setToast(error.message);
-          return;
-        }
-
-        if (factor === MfaFactor.TOTP) {
-          const state: MfaFactorsState = { availableFactors };
-          navigate({ pathname: `/${UserMfaFlow.MfaVerification}/${factor}` }, { replace, state });
-        }
-        // Todo: @xiaoyijun handle other factors
+        handleMfaRedirect(UserMfaFlow.MfaVerification, availableFactors);
       },
     }),
-    [navigate, replace, setToast, startTotpBinding]
+    [handleMfaRedirect, setToast]
   );
 
   return mfaVerificationErrorHandler;
