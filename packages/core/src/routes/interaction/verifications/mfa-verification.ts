@@ -83,34 +83,28 @@ export const validateMandatoryBindMfa = async (
   }
 
   if (event === InteractionEvent.Register) {
-    const missingFactors = factors.filter((factor) => factor !== bindMfa?.type);
     assertThat(
-      missingFactors.length === 0,
-      new RequestError(
-        {
-          code: 'user.missing_mfa',
-          status: 422,
-        },
-        { missingFactors }
-      )
+      bindMfa && factors.includes(bindMfa.type),
+      new RequestError({
+        code: 'user.missing_mfa',
+        status: 422,
+      })
     );
   }
 
   if (event === InteractionEvent.SignIn) {
     const { accountId } = interaction;
     const { mfaVerifications } = await tenant.queries.users.findUserById(accountId);
-    const missingFactors = factors.filter(
-      (factor) => factor !== bindMfa?.type && !mfaVerifications.some(({ type }) => type === factor)
+    const hasFactorInBind = Boolean(bindMfa && factors.includes(bindMfa.type));
+    const hasFactorInUser = factors.some((factor) =>
+      mfaVerifications.some(({ type }) => type === factor)
     );
     assertThat(
-      missingFactors.length === 0,
-      new RequestError(
-        {
-          code: 'user.missing_mfa',
-          status: 422,
-        },
-        { missingFactors }
-      )
+      hasFactorInBind || hasFactorInUser,
+      new RequestError({
+        code: 'user.missing_mfa',
+        status: 422,
+      })
     );
   }
 
