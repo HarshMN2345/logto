@@ -20,8 +20,8 @@ export type ExperiencePath =
   | `${ExperienceType}/verify`
   | `${ExperienceType}/verification-code`
   | `forgot-password/reset`
-  | `mfa-binding/${MfaFactor.TOTP}`
-  | `mfa-verification/${MfaFactor.TOTP}`;
+  | `mfa-binding/${MfaFactor}`
+  | `mfa-verification/${MfaFactor}`;
 
 export type ExpectExperienceOptions = {
   /** The URL of the experience endpoint. */
@@ -94,7 +94,7 @@ export default class ExpectExperience extends ExpectPage {
    *
    * It will clear the ongoing experience if the experience is ended successfully.
    */
-  async verifyThenEnd() {
+  async verifyThenEnd(closePage = true) {
     if (this.#ongoing === undefined) {
       return this.throwNoOngoingExperienceError();
     }
@@ -103,7 +103,9 @@ export default class ExpectExperience extends ExpectPage {
     await this.toClick('div[role=button]', /sign out/i);
 
     this.#ongoing = undefined;
-    await this.page.close();
+    if (closePage) {
+      await this.page.close();
+    }
   }
 
   /**

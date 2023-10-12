@@ -82,3 +82,14 @@ export const enableMandatoryMfaWithTotp = async () =>
       policy: MfaPolicy.Mandatory,
     },
   });
+
+export const enableMandatoryMfaWithWebAuthn = async () =>
+  updateSignInExperience({
+    mfa: {
+      factors: [MfaFactor.WebAuthn],
+      policy: MfaPolicy.Mandatory,
+    },
+  });
+
+export const resetMfaSettings = async () =>
+  updateSignInExperience({ mfa: { policy: MfaPolicy.UserControlled, factors: [] } });
